@@ -1,0 +1,26 @@
+# Candidate models. `chat` sets prompt wrapping in baselines; `baseline: false` = count parameters only.
+# Every entry must be verified in MODEL_MANIFEST.md (total params ≤ 8B, released before 2026-10-01, license).
+candidates:
+  # Gemma
+  - {id: google/gemma-3-4b-it, chat: true}
+  - {id: google/gemma-3n-E4B-it, chat: true}
+  - {id: google/gemma-3n-E2B-it, chat: true, baseline: false}
+  - {id: google/gemma-4-E4B-it, chat: true}
+  - {id: google/gemma-4-E2B-it, chat: true, baseline: false}
+  - {id: google/gemma-4-12B-it, chat: true, baseline: false}   # reference: expected over the limit
+  # Qwen
+  - {id: Qwen/Qwen3-4B-Instruct-2507, chat: true}
+  - {id: Qwen/Qwen3-4B, chat: true}                             # hybrid thinking model, thinking disabled
+  - {id: Qwen/Qwen3.5-4B, chat: true}
+  - {id: Qwen/Qwen3-8B, chat: true, baseline: false}            # reference: expected ~8.2B
+  - {id: Qwen/Qwen3.5-9B, chat: true, baseline: false}          # reference: expected over the limit
+  # Llama / SinLlama
+  - {id: meta-llama/Llama-3.2-3B-Instruct, chat: true}
+  - {id: meta-llama/Llama-3.1-8B-Instruct, chat: true, baseline: false}   # 8.03B: needs organiser ruling
+  - {id: polyglots/SinLlama_v01, chat: false, baseline: false}  # LoRA adapter on Meta-Llama-3-8B + extended vocab
+  # Others
+  - {id: ibm-granite/granite-4.1-8b, chat: true, baseline: false}   # 8.38B: over the limit
+  - {id: ibm-granite/granite-4.2-8b, chat: true, baseline: false}   # 8.79B: over the limit
+  - {id: ibm-granite/granite-4.2-3b, chat: true}
+  - {id: HuggingFaceTB/SmolLM3-3B, chat: true}
+  - {id: microsoft/Phi-4-mini-instruct, chat: true}

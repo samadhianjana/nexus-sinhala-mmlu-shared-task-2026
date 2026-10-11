@@ -1,0 +1,20 @@
+# Secrets
+.env
+*.token
+
+# Task data (CC BY-NC-ND 4.0): never commit. Fetch with scripts/fetch_data.py.
+data/
+
+# Weights, runs, caches
+models/
+checkpoints/
+results/
+*.safetensors
+*.bin
+*.pt
+*.zip
+.venv/
+__pycache__/
+*.pyc
+.cache/
+wandb/

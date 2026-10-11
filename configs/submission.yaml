@@ -1,0 +1,13 @@
+# Everything the offline submission pipeline needs (inference/predict.py).
+# Chosen on SinhalaMMLU dev + Global-MMLU si validation only (reports/experiments_prompting.md), never on test.
+model: models/gemma-4-E4B-it-text   # text-only Gemma 4 E4B (scripts/make_text_only.py), 7.463B parameters
+lang: en
+chat: true
+method: logit
+n_perms: 1
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64

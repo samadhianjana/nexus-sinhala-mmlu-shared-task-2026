@@ -1,0 +1,5 @@
+smmlu/easy/science/128
+smmlu/easy/Health and Physical Science/52
+smmlu/easy/Sinhala language and literature/21
+smmlu/easy/Buddhism/158
+smmlu/easy/Buddhism/147
