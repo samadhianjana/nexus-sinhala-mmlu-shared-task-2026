@@ -1,0 +1,45 @@
+{
+  "target_tokens": 300000000.0,
+  "near_duplicates_removed": {
+    "fineweb2": 1027,
+    "nsina": 2222,
+    "wikipedia": 216
+  },
+  "english_revision": "HuggingFaceFW/fineweb-edu@87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "parts": {
+    "wikipedia": {
+      "docs": 16520,
+      "chars": 47553705,
+      "est_gemma_tokens": 19021482,
+      "picks": {
+        "all": 16520
+      }
+    },
+    "fineweb2": {
+      "docs": 207428,
+      "chars": 477047721,
+      "est_gemma_tokens": 190819088,
+      "picks": {
+        "top_sl_score": 148871,
+        "random": 58557
+      }
+    },
+    "nsina": {
+      "docs": 123278,
+      "chars": 149999535,
+      "est_gemma_tokens": 59999814,
+      "picks": {
+        "random": 123278
+      }
+    },
+    "english": {
+      "docs": 25433,
+      "chars": 119994844,
+      "est_gemma_tokens": 29998711,
+      "picks": {
+        "random": 25433
+      }
+    }
+  },
+  "total_est_gemma_tokens": 299839095
+}

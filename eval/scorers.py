@@ -21,7 +21,10 @@ def resolve_revision(name: str, revision: str | None) -> tuple[str | None, str |
 
     if Path(name).is_dir():
         src = Path(name) / "SOURCE.json"
-        return None, (json.loads(src.read_text())["source_commit"] + "+text-only") if src.exists() else "local"
+        if not src.exists():
+            return None, "local"
+        meta = json.loads(src.read_text())
+        return None, meta.get("model_id") or meta["source_commit"] + "+text-only"
     if revision and re.fullmatch(r"[0-9a-f]{40}", revision):
         return revision, revision
     if os.environ.get("HF_HUB_OFFLINE") == "1":

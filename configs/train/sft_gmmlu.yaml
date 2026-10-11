@@ -1,0 +1,24 @@
+# Step 4: fine-tune text-only Gemma 4 E4B on Global-MMLU si MCQs (scripts/build_sft_gmmlu.py), answer-digit loss.
+mode: sft
+model: models/gemma-4-E4B-it-text
+out_dir: models/sft_gmmlu_v1
+data: [data/sft/gmmlu_si_train.jsonl]
+lang: en
+chat: true
+permute_options: true
+epochs: 2
+batch_size: 32          # questions per optimizer step
+micro_tokens: 16384     # padded tokens per forward pass
+lr: 1.0e-5
+min_lr_ratio: 0.1
+warmup_steps: 20
+weight_decay: 0.0
+max_grad_norm: 1.0
+freeze_embeddings: true # Gemma per-layer embedding tables (3.5B) frozen; 3.97B trained
+ckpt_every: 1
+compile: false          # variable SFT lengths would recompile per shape
+loss: liger
+seed: 1234
+gpu_mem_gb: 100
+keep_checkpoints: 2
+log_every: 10
