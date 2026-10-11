@@ -1,0 +1,66 @@
+{
+  "revisions": {
+    "fineweb2": "HuggingFaceFW/fineweb-2@af9c13333eb981300149d5ca60a8e9d659b276b9",
+    "wikipedia": "wikimedia/wikipedia@b04c8d1ceb2f5cd4588862100d08de323dccfbaa",
+    "nsina": "sinhala-nlp/NSINA@a986af81ad1959701aaac7ee13f756845928e672"
+  },
+  "sources": {
+    "fineweb2": {
+      "docs_seen": 1185323,
+      "reasons": {
+        "kept": 1169835,
+        "exam_like": 3779,
+        "not_sinhala": 7561,
+        "blocked_domain": 4100,
+        "contaminated": 27,
+        "duplicate": 21
+      },
+      "kept_chars": 2842104750,
+      "est_gemma_tokens": 1136841900,
+      "sl_score_quantiles": {
+        "50": 0.0,
+        "90": 2.687600000000093,
+        "99": 7.034
+      }
+    },
+    "wikipedia": {
+      "docs_seen": 23065,
+      "reasons": {
+        "kept": 16736,
+        "too_short": 4921,
+        "exam_like": 161,
+        "not_sinhala": 796,
+        "duplicate": 447,
+        "contaminated": 3,
+        "repetitive": 1
+      },
+      "kept_chars": 47946427,
+      "est_gemma_tokens": 19178570,
+      "sl_score_quantiles": {
+        "50": 1.8105,
+        "90": 9.329,
+        "99": 19.66290000000004
+      }
+    },
+    "nsina": {
+      "docs_seen": 486932,
+      "reasons": {
+        "kept": 452431,
+        "not_sinhala": 9313,
+        "duplicate": 13954,
+        "exam_like": 908,
+        "too_short": 10320,
+        "repetitive": 6
+      },
+      "kept_chars": 567614929,
+      "est_gemma_tokens": 227045971,
+      "sl_score_quantiles": {
+        "50": 0.0,
+        "90": 4.215,
+        "99": 9.658
+      }
+    }
+  },
+  "total_est_gemma_tokens": 1383066441,
+  "seconds": 163
+}

@@ -81,8 +81,10 @@ All sources go into `DATA_LOG.md` (URL, revision, license, size, filters).
 - [ ] Translate English MCQ sets (ARC, OpenBookQA, SciQ, RACE, MMLU auxiliary train) into Sinhala with Gemma 4 E4B
       or NLLB-200. Filter by back-translation agreement and answer-consistency checks.
 - [ ] Rebalance gold answer positions (the dev set has few "4" answers; avoid teaching a position prior).
-- [ ] Optional, needs a decision: synthetic Sri Lankan curriculum questions (history, Buddhism, arts, literature).
-      Generated with an open model, or a closed API with disclosure. Verify answers with a second model.
+- **Decided 11 Oct: no closed-API synthetic data** (no budget for paid APIs).
+- [ ] Optional, open model only: Gemma 4 E4B writes Sinhala MCQs from Sinhala Wikipedia articles on the weakest
+      subjects (Sri Lankan history, Buddhism, dance, Eastern music, literature). Free apart from GPU time; filter by
+      answer agreement and drop questions that overlap dev/validation.
 
 **Sinhala corpus for continued pretraining:**
 - [ ] FineWeb-2 `sin_Sinh` (main), CulturaX `si`, MADLAD-400 `si`, Sinhala Wikipedia, NSINA news.
@@ -131,7 +133,6 @@ All sources go into `DATA_LOG.md` (URL, revision, license, size, filters).
 |---|---|---|
 | Email organisers: exact 8B threshold, vocabulary trimming, per-subject few-shot, government textbooks | Decides model choice and data sources | Team |
 | Register on Codabench (corresponding member) | Needed before 12 Oct | Team |
-| Decide on closed-API synthetic data | Shapes the phase 3 data plan; must be disclosed | Team |
 | Docker group access (`sudo usermod -aG docker anas22`) | Needed for NGC containers (FP8, packaging) | Team |
 | Optional: Hugging Face access to Llama 3 / 3.1 | Only to count SinLlama and Llama 3.1 8B (both likely over 8B) | Team |
 

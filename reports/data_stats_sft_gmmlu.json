@@ -1,0 +1,32 @@
+{
+  "pool": 12327,
+  "kept": 11447,
+  "dropped": {
+    "near_validation": 819,
+    "duplicate_within_pool": 61
+  },
+  "thresholds": {
+    "validation": 0.6,
+    "sinhalammlu_dev": 0.5,
+    "within_pool": 0.95
+  },
+  "max_similarity_kept": {
+    "to_validation": 0.5999996441576304,
+    "to_sinhalammlu_dev": 0.4235920760708065
+  },
+  "answer_positions": {
+    "1": 2831,
+    "2": 2824,
+    "3": 2847,
+    "4": 2945
+  },
+  "shuffled": 10733,
+  "by_category": {
+    "Humanities": 3351,
+    "STEM": 2760,
+    "Social Sciences": 2676,
+    "Medical": 1259,
+    "Other": 764,
+    "Business": 637
+  }
+}
