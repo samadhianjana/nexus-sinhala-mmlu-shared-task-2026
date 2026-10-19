@@ -4,7 +4,7 @@
 #   2. offline submission pipeline on the dev files, validated + scored like the leaderboard
 #   3. training throughput benchmarks
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 mkdir -p results/logs results/dev_submission
 step() { echo; echo "=== $* ($(date +%H:%M))"; }

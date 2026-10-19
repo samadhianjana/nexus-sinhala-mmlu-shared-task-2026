@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Throughput with the speed options of train/efficiency.py (results appended to reports/throughput.jsonl).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 G=models/gemma-4-E4B-it-text
 Q=Qwen/Qwen3.5-4B

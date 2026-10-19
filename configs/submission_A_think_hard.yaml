@@ -1,0 +1,15 @@
+# Everything the offline submission pipeline needs (inference/predict.py).
+# A + thinking on hard (19 Oct): model A; questions labelled hard use thinking mode (academic proxy +8.4, paired CI [+4.9, +11.8]); others fast 4-order vote. Never chosen on test.
+model: models/sft_gmmlu_lora/step-357   # model A: LoRA r=16 on Global-MMLU si, 1 epoch, merged (7.463B)
+lang: en
+chat: true
+method: logit
+n_perms: 4            # vote over 4 cyclic option orders (+2.7 dev vs zero-shot, paired bootstrap)
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [hard]
+think_max_new_tokens: 2048

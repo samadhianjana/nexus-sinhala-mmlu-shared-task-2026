@@ -2,7 +2,7 @@
 # Step 4: fine-tune text-only Gemma 4 E4B on Global-MMLU si, then score every epoch checkpoint exactly like the
 # zero-shot baseline (English prompt, logit scoring, 4 cyclic option orders) on SinhalaMMLU dev + Global-MMLU val.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 CFG=configs/train/sft_gmmlu.yaml
 OUT=models/sft_gmmlu_v1

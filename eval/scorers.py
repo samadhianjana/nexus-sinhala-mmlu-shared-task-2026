@@ -148,13 +148,20 @@ class Scorer:
             out = self.model.generate(**enc, max_new_tokens=self.max_new_tokens, do_sample=False,
                                       temperature=None, top_p=None, top_k=None,
                                       pad_token_id=self.tok.pad_token_id)
-            texts = self.tok.batch_decode(out[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)
+            new = out[:, enc["input_ids"].shape[1]:]
+            raw = self.tok.batch_decode(new, skip_special_tokens=False)
+            texts = self.tok.batch_decode(new, skip_special_tokens=True)
             for row, i in enumerate(idx):
                 n = n_options[i]
-                m = re.search(rf"(?<![0-9])([1-{n}])(?![0-9])", texts[row])
+                answer_text = texts[row]
+                if "<|channel>" in raw[row]:  # thinking mode: the answer is what follows the closed thought channel
+                    answer_text = raw[row].split("<channel|>")[-1] if "<channel|>" in raw[row] else ""
+                    answer_text = re.sub(r"<[^>]*\|>|<\|[^>]*>", " ", answer_text)
+                m = re.search(rf"(?<![0-9])([1-{n}])(?![0-9])", answer_text)
                 pred = int(m.group(1)) if m else None
                 probs = [1.0 if pred == k else 0.0 for k in range(1, n + 1)]
-                results[i] = {"probs": probs, "pred": pred, "text": texts[row]}
+                n_new = int((new[row] != self.tok.pad_token_id).sum())
+                results[i] = {"probs": probs, "pred": pred, "text": texts[row][-2000:], "new_tokens": n_new}
         return results
 
     @torch.no_grad()

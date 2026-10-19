@@ -71,7 +71,7 @@ def score_items(items: dict[str, dict], pb: PromptBuilder, scorer, method: str, 
                "pred_display": r["pred"], "gold_display": perm.index(gold - 1) + 1 if gold else None,
                "pred_orig": pred_orig, "gold": gold, "correct": pred_orig == gold if gold else None,
                "probs_orig": probs_orig}
-        for extra in ("label_mass", "text"):
+        for extra in ("label_mass", "text", "new_tokens"):
             if extra in r:
                 rec[extra] = r[extra]
         records.append(rec)
@@ -88,6 +88,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--lang", choices=["en", "si"], default="en", help="instruction language")
     ap.add_argument("--chat", choices=["auto", "on", "off"], default="auto")
     ap.add_argument("--answer-prefix", default="")
+    ap.add_argument("--thinking", action="store_true", help="enable the chat template's thinking mode (use with --method generate)")
     ap.add_argument("--n-perms", type=int, default=1, help="option orders per question (1 = original only)")
     ap.add_argument("--perm-mode", choices=["cyclic", "random"], default="cyclic")
     ap.add_argument("--fewshot-file", help="processed JSONL; the same examples precede every question")
@@ -132,7 +133,8 @@ def main() -> None:
     t0 = time.time()
     model, tok = load_model(args.model, args.revision, args.dtype)
     chat = {"on": True, "off": False}.get(args.chat, tok.chat_template is not None and not BASE_NAME.search(args.model))
-    pb = PromptBuilder(tok, lang=args.lang, chat=chat, fewshot=fewshot, answer_prefix=args.answer_prefix)
+    pb = PromptBuilder(tok, lang=args.lang, chat=chat, fewshot=fewshot, answer_prefix=args.answer_prefix,
+                       chat_kwargs={"enable_thinking": args.thinking})
     scorer = Scorer(model, tok, pb.add_special_tokens, args.token_budget, args.max_batch, args.max_new_tokens)
     load_s = time.time() - t0
 

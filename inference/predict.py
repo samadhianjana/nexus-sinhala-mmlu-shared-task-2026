@@ -3,6 +3,10 @@
   python -m inference.predict --input <test dir | .json | .jsonl> --output predictions.zip
 
 Runs with HF_HUB_OFFLINE=1 (no network); every setting comes from configs/submission.yaml.
+Optional per-question thinking (config `thinking_levels`, e.g. [hard]): questions whose own `level` field is listed are
+answered with the model's thinking mode (greedy, original option order); if no answer can be read from the output,
+the fast answer is used. All other questions use the fast logit answer (voted over `n_perms` option orders).
+
 Accepts the SinhalaMMLU JSON layout (list of {q_no, subject, category, question, choices, metadata.difficulty})
 and JSONL; q_no / subject / category / level are echoed exactly as given. Writes <output>.run.json next to the
 zip with the model commit, loaded parameter count, input hash and library versions.
@@ -24,7 +28,9 @@ LEVELS = ("easy", "medium", "hard")
 
 
 def read_records(path: Path) -> list[tuple[Path, dict]]:
-    files = sorted(p for p in path.rglob("*") if p.suffix in (".json", ".jsonl")) if path.is_dir() else [path]
+    files = sorted(p for p in path.rglob("*") if p.suffix in (".json", ".jsonl")
+                   and not any(part.startswith(".") for part in p.relative_to(path).parts)) if path.is_dir() else [path]
+    # (hidden dirs skipped: huggingface_hub keeps download metadata as JSON under .cache/)
     out = []
     for f in files:
         text = f.read_text(encoding="utf-8")
@@ -54,6 +60,7 @@ def main() -> None:
     ap.add_argument("--output", required=True, type=Path)
     ap.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "configs" / "submission.yaml")
     ap.add_argument("--allow-online", action="store_true", help="debugging only; the submission runs offline")
+    ap.add_argument("--limit", type=int, help="first N questions only (smoke tests; never for a submission)")
     args = ap.parse_args()
     if not args.allow_online:
         os.environ["HF_HUB_OFFLINE"] = os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -77,6 +84,8 @@ def main() -> None:
         if it["uid"] in items:
             raise SystemExit(f"duplicate question id {it['uid']}")
         items[it["uid"]] = it
+    if args.limit:
+        items = dict(list(items.items())[: args.limit])
     print(f"{len(items)} questions from {args.input}")
 
     t0 = time.time()
@@ -88,10 +97,27 @@ def main() -> None:
     records, _ = score_items(items, pb, scorer, cfg["method"], cfg["n_perms"], cfg["perm_mode"], cfg["seed"])
     agg = aggregate_items(items, records)
 
+    # Thinking mode for selected levels (decided per question from its own level field)
+    think_levels = set(cfg.get("thinking_levels") or [])
+    think_uids = [u for u, it in items.items() if it["level"] in think_levels]
+    think_pred, fallbacks = {}, 0
+    if think_uids:
+        tpb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"], chat_kwargs={"enable_thinking": True})
+        tscorer = Scorer(model, tok, tpb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64),
+                         max_new_tokens=cfg.get("think_max_new_tokens", 2048))
+        res = tscorer.generate([tpb.mcq(items[u], items[u]["options"]) for u in think_uids],
+                               [len(items[u]["options"]) for u in think_uids])
+        for u, r in zip(think_uids, res):
+            if r["pred"]:
+                think_pred[u] = r["pred"]
+            else:
+                fallbacks += 1
+        print(f"thinking: {len(think_uids)} questions ({sorted(think_levels)}), {fallbacks} fell back to the fast answer")
+
     rows = []
     for uid, it in items.items():
         n = len(it["options"])
-        ans = agg[uid]["vote"]
+        ans = think_pred.get(uid, agg[uid]["vote"])
         if ans is None or not 1 <= ans <= n:
             raise SystemExit(f"no valid prediction for {uid}")
         rows.append({"q_no": it["q_no"], "subject": it["subject_raw"], "category": it["category"],
@@ -104,6 +130,7 @@ def main() -> None:
     for f in sorted({str(f) for f, _ in raw}):
         digest.update(Path(f).read_bytes())
     run = {"config": cfg, "n_questions": len(rows), "seconds": round(time.time() - t0, 1),
+           "thinking": {"levels": sorted(think_levels), "questions": len(think_uids), "fallbacks": fallbacks},
            "input_sha256": digest.hexdigest(), "params": loaded_param_stats(model), "env": env_fingerprint()}
     Path(str(args.output) + ".run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False))
     print(f"wrote {len(rows)} predictions -> {args.output} "

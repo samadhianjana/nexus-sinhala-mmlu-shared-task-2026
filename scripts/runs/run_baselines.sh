@@ -2,7 +2,7 @@
 # Zero-shot baselines: same prompt for every model, letter-logit scoring, 4 cyclic option orders.
 # Usage: scripts/run_baselines.sh [model ...]   (default: every `baseline` entry in configs/models.yaml)
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 METHOD=${METHOD:-logit}
 NPERMS=${NPERMS:-4}

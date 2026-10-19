@@ -73,18 +73,24 @@ def sft_examples(cfg: dict, tok, epoch: int) -> list[dict]:
 
     pb = PromptBuilder(tok, lang=cfg.get("lang", "en"), chat=cfg.get("chat", True))
     rng = random.Random(f"{cfg['seed']}|{epoch}")
+    label_ids = {}
     out = []
     for f in cfg["data"]:
         for r in read_jsonl(ROOT / f):
             opts, ans = list(r["options"]), r["answer"]
+            tprobs = r.get("teacher_probs")  # teacher's option distribution, in the stored option order
+            order = list(range(len(opts)))
             if cfg.get("permute_options", True) and not any(REFERS_TO_OTHERS.search(o) for o in opts):
-                order = list(range(len(opts)))
                 rng.shuffle(order)
-                opts, ans = [opts[j] for j in order], order.index(ans - 1) + 1
+            opts, ans = [opts[j] for j in order], order.index(ans - 1) + 1
+            tprobs = [tprobs[j] for j in order] if tprobs else None
             ids = tok(pb.mcq(r, opts), add_special_tokens=pb.add_special_tokens)["input_ids"]
-            target = tok.encode(str(ans), add_special_tokens=False)
-            assert len(target) == 1, f"answer label {ans} is not a single token"
-            out.append({"ids": ids, "target": target[0]})
+            n = len(opts)
+            if n not in label_ids:
+                label_ids[n] = [tok.encode(str(k), add_special_tokens=False) for k in range(1, n + 1)]
+                assert all(len(t) == 1 for t in label_ids[n]), "answer labels must be single tokens"
+            out.append({"ids": ids, "target": label_ids[n][ans - 1][0], "labels": [t[0] for t in label_ids[n]],
+                        "tprobs": tprobs})
     rng.shuffle(out)
     return out
 
@@ -110,13 +116,19 @@ def sft_steps(examples: list[dict], batch_size: int, micro_tokens: int, pad_id: 
             for i, e in enumerate(m):
                 ids[i, : len(e["ids"])] = torch.tensor(e["ids"])
                 mask[i, : len(e["ids"])] = 1
-            batches.append({"input_ids": ids, "attention_mask": mask,
-                            "last": torch.tensor([len(e["ids"]) - 1 for e in m]),
-                            "target": torch.tensor([e["target"] for e in m])})
+            b = {"input_ids": ids, "attention_mask": mask,
+                 "last": torch.tensor([len(e["ids"]) - 1 for e in m]),
+                 "target": torch.tensor([e["target"] for e in m])}
+            if all(e["tprobs"] is not None for e in m) and len({len(e["labels"]) for e in m}) == 1:
+                b["labels"] = torch.tensor([e["labels"] for e in m])
+                b["tprobs"] = torch.tensor([e["tprobs"] for e in m], dtype=torch.float32)
+            batches.append(b)
         yield batches
 
 
-def sft_loss(model, batch, batch_size: int):
+def sft_loss(model, batch, batch_size: int, kd_alpha: float = 0.0):
+    """Cross-entropy of the answer digit; with kd_alpha > 0 and teacher probabilities present, mixed with the KL
+    divergence from the teacher's distribution over the option labels (knowledge distillation)."""
     import torch
     import torch.nn.functional as F
 
@@ -128,7 +140,14 @@ def sft_loss(model, batch, batch_size: int):
     logits = head(h).float()
     if softcap:
         logits = torch.tanh(logits / softcap) * softcap
-    return F.cross_entropy(logits, batch["target"], reduction="sum") / batch_size
+    ce = F.cross_entropy(logits, batch["target"], reduction="none")
+    if kd_alpha > 0 and "tprobs" in batch:
+        student = torch.log_softmax(logits.gather(1, batch["labels"]), dim=-1)
+        teacher = batch["tprobs"].clamp_min(1e-8)
+        teacher = teacher / teacher.sum(-1, keepdim=True)
+        kl = (teacher * (teacher.log() - student)).sum(-1)
+        return ((1 - kd_alpha) * ce + kd_alpha * kl).sum() / batch_size
+    return ce.sum() / batch_size
 
 
 # ---------------------------------------------------------------- model / saving
@@ -141,11 +160,20 @@ def load(cfg: dict):
     path = str(ROOT / cfg["model"]) if (ROOT / cfg["model"]).exists() else cfg["model"]
     model = AutoModelForCausalLM.from_pretrained(path, dtype=torch.bfloat16, device_map="cuda")
     model.config.use_cache = False
-    if cfg.get("freeze_embeddings", True):
+    if cfg.get("lora"):  # adapters on all linear layers; merged into the base weights when saved
+        from peft import LoraConfig, get_peft_model
+
+        lc = cfg["lora"]
+        model = get_peft_model(model, LoraConfig(r=lc["r"], lora_alpha=lc.get("alpha", 2 * lc["r"]),
+                                                 target_modules=lc.get("targets", "all-linear"),
+                                                 lora_dropout=lc.get("dropout", 0.0), task_type="CAUSAL_LM"))
+    elif cfg.get("freeze_embeddings", True):
         for name, p in model.named_parameters():
             if "embed_tokens" in name:  # incl. Gemma per-layer embedding tables; lm_head is tied to embed_tokens
                 p.requires_grad_(False)
     configure(model, cfg.get("ckpt_every", 1), cfg.get("compile", False))
+    if cfg.get("lora") and cfg.get("ckpt_every", 1) > 0:
+        model.enable_input_require_grads()
     model.train()
     tok = AutoTokenizer.from_pretrained(path)
     return model, tok, Path(path)
@@ -153,6 +181,8 @@ def load(cfg: dict):
 
 def save(model, tok, src: Path, out: Path, info: dict) -> None:
     out.mkdir(parents=True, exist_ok=True)
+    if hasattr(model, "merge_and_unload"):  # LoRA: save plain merged weights (parameter count = base model)
+        model = model.merge_and_unload()
     model.config.use_cache = True
     model.save_pretrained(out, safe_serialization=True)
     model.config.use_cache = False
@@ -182,10 +212,13 @@ def main() -> None:
     ap.add_argument("--out", help="override out_dir")
     ap.add_argument("--max-steps", type=int, help="stop early (smoke tests)")
     ap.add_argument("--limit-docs", type=int, help="cpt: tokenise only N documents (smoke tests)")
+    ap.add_argument("--data", nargs="+", help="sft: override the training files")
     args = ap.parse_args()
     cfg = yaml.safe_load(open(args.config))
     cfg["out_dir"] = args.out or cfg["out_dir"]
     cfg["limit_docs"] = args.limit_docs or cfg.get("limit_docs")
+    if args.data:
+        cfg["data"] = args.data
     load_env()
     set_seed(cfg["seed"])
     cap_gpu_memory(cfg.get("gpu_mem_gb"))
@@ -219,6 +252,8 @@ def main() -> None:
         save_every = per_epoch  # end of every epoch
     if args.max_steps:
         total = min(total, args.max_steps)
+    if cfg.get("lora"):
+        save_every = total
     print(f"{cfg['mode']}: {total} optimizer steps, "
           f"{sum(p.numel() for p in trainable) / 1e9:.2f}B trainable params", flush=True)
 
@@ -238,7 +273,7 @@ def main() -> None:
                 loss = lm_loss(model, b["input_ids"], b["input_ids"], cfg.get("loss", "liger")) / len(micro_batches)
                 tokens_seen += b["input_ids"].numel()
             else:
-                loss = sft_loss(model, b, cfg["batch_size"])
+                loss = sft_loss(model, b, cfg["batch_size"], cfg.get("kd_alpha", 0.0))
                 tokens_seen += int(b["attention_mask"].sum())
             loss.backward()
             loss_sum += loss.item()

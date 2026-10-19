@@ -9,6 +9,7 @@ disclosure). Task data is never committed; `scripts/fetch_data.py` re-downloads 
 |---|---|---|---|---|
 | SinhalaMMLU public Easy tier (`naist-nlp/SinhalaMMLU`, TEST/easy) | `7dd30681d9` | CC BY-NC-ND 4.0 | Dev evaluation | 1,851 questions, 14 subjects, grades 6-8, 4 options. `Geography/64` dropped (answer label `24`). Cite Pramodya et al., EMNLP 2025. |
 | Global-MMLU `si` (`CohereLabs/Global-MMLU`) | `0e619dbeb3` | Apache-2.0 | Harder internal validation: fixed 2,000-question stratified sample of `test` (ids in `configs/splits/gmmlu_si_val_ids.txt`); `dev` split = few-shot pool | Validation ids must be excluded from any training mix. |
+| Shared-task test set (`SinhalaMMLU-SharedTask/Sinhala-MMLU-SharedTask-Test-Dataset`) | `56fb2da50c` | (organisers) | **Prediction only.** Never used for training, tuning, prompt design or model selection; no answers included | 2,238 questions (easy 642, medium 1,111, hard 485), 4 options, same JSON layout as dev. Stored in `data/test/` (git-ignored). |
 | Belebele `sin_Sinh` (`facebook/belebele`) | `7899cdfa4e` | CC BY-SA 4.0 | **Evaluation only**, never training | 900 reading-comprehension questions. |
 
 ## Training data

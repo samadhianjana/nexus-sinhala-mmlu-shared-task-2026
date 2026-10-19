@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Gemma 4 E4B: compile with activation recomputation (fixed) and/or 8-bit optimizer states, for memory headroom.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 G=models/gemma-4-E4B-it-text
 RUNS=(

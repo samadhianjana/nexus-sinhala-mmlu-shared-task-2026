@@ -1,0 +1,25 @@
+# Gentle fine-tuning: LoRA r=16 on all linear layers (base frozen, merged at save -> 7.463B params).
+# Used for experiment A (Global-MMLU, 1 epoch) and B (SinhalaMMLU dev 5-fold CV, --data/--out per fold).
+mode: sft
+model: models/gemma-4-E4B-it-text
+out_dir: models/sft_lora
+data: [data/sft/gmmlu_si_train.jsonl]
+lang: en
+chat: true
+permute_options: true
+epochs: 1
+batch_size: 32
+micro_tokens: 16384
+lr: 1.0e-4
+min_lr_ratio: 0.1
+warmup_steps: 10
+weight_decay: 0.0
+max_grad_norm: 1.0
+lora: {r: 16, alpha: 32, dropout: 0.0, targets: all-linear}
+ckpt_every: 1
+compile: false
+loss: liger
+seed: 1234
+gpu_mem_gb: 100
+keep_checkpoints: 1
+log_every: 10

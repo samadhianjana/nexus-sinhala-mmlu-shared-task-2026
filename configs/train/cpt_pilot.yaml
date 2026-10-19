@@ -1,0 +1,24 @@
+# Experiment C: 30M-token pilot of continued pretraining (lower LR to limit forgetting), checkpoints at 15M/30M.
+mode: cpt
+model: models/gemma-4-E4B-it-text
+out_dir: models/cpt_pilot
+data_dir: data/corpus/cpt_v1
+seq_len: 2048
+micro_batch: 2
+grad_accum: 32          # 131k tokens per optimizer step
+max_tokens: 30000000
+epochs: 1
+lr: 5.0e-6
+min_lr_ratio: 0.1
+warmup_steps: 20
+weight_decay: 0.0
+max_grad_norm: 1.0
+freeze_embeddings: true
+ckpt_every: 2
+compile: true
+loss: liger
+seed: 1234
+gpu_mem_gb: 100
+save_every_tokens: 15000000
+keep_checkpoints: 3
+log_every: 10

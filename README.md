@@ -26,7 +26,9 @@ System for the ICTer 2026 SinhalaMMLU shared task: Sinhala multiple-choice QA wi
 | `train/` | Fine-tuning / continued-pretraining code |
 | `inference/` | Final offline submission pipeline |
 | `configs/` | Candidate models, fixed data splits |
-| `scripts/` | Data fetching, parameter counting, baseline runs |
+| `scripts/` | Data building, parameter counting, overlap checks, synthetic MCQ generation |
+| `scripts/runs/` | The exact experiment queues behind every reported result and submission (see its README) |
+| `run_submission.sh` | One-command offline reproduction of a submission |
 | `reports/` | Aggregate results tables (no task data) |
 | `MODEL_MANIFEST.md` | Every model: exact total parameters, release date, license |
 | `DATA_LOG.md` | Every dataset and every closed-API data-generation use |
@@ -61,7 +63,8 @@ an uncapped job triggers the kernel OOM killer (which also kills tmux) instead o
 .venv/bin/python scripts/fetch_data.py            # SinhalaMMLU dev, Global-MMLU si, Belebele si -> data/raw
 .venv/bin/python scripts/prepare_data.py          # -> data/processed/*.jsonl (fixed splits in configs/splits)
 .venv/bin/python scripts/count_params.py          # exact parameter counts -> MODEL_MANIFEST.md
-scripts/run_baselines.sh                          # zero-shot baselines -> results/, reports/
+scripts/runs/run_baselines.sh                     # zero-shot baselines -> results/, reports/
+./run_submission.sh [config]                      # reproduce a submission offline -> results/submissions/final.zip
 
 # One model, any setting
 .venv/bin/python -m eval.run_eval --model google/gemma-4-E4B-it --data sinhalammlu_dev gmmlu_si_val \

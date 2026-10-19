@@ -6,7 +6,7 @@
 #   cloze        length-normalised option likelihood (options not shown)
 # Usage: scripts/run_experiments.sh [model ...]
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PY=.venv/bin/python
 DATA="sinhalammlu_dev gmmlu_si_val"
 if [ $# -gt 0 ]; then MODELS=("$@"); else MODELS=(google/gemma-4-E4B-it google/gemma-3n-E4B-it Qwen/Qwen3.5-4B); fi
