@@ -64,6 +64,28 @@ and a dev sample; (2) Gemma 4 31B soft labels for the 11,447 Global-MMLU trainin
 If thinking helps on the academic proxy without hurting dev, inference uses it for questions labelled `hard` (each
 question decided from its own fields only). Teacher (Gate 1, 19 Oct): Gemma 4 31B-it, dev 73.6 vs student 55.2.
 
+## 2c. Update 20 Oct: thinking wins; plan for the last 4 days
+
+| Submission | Easy | Medium | Hard | Macro avg |
+|---|---:|---:|---:|---:|
+| 4: model A, thinking on hard | 55.30 | 49.51 | 62.68 | 55.83 |
+| 5: base + adapter A; base-model thinking (adapter off) on hard | 55.14 | 49.87 | 68.04 | 57.68 |
+| **6: same, thinking on medium + hard** | 55.14 | **54.91** | 67.63 | **59.22** (1st on 20 Oct) |
+
+Findings: LoRA trained to answer at once makes the model skip reasoning (model A reasons on 26% of academic questions,
+base model on 100%); base-model thinking is +19 on the academic proxy and +12 on the non-academic proxy vs model A's
+fast answers; distillation from Gemma 4 31B soft labels gave no gain (dev −0.9). Hard moved −0.4 between submissions 5
+and 6 with identical settings: greedy reasoning is sensitive to batch composition (document for reproduction).
+
+Remaining plan (decided 20 Oct):
+1. Easy: base-model thinking on the remaining 1,450 dev questions; if not worse than adapter A's fast vote, the final
+   system is the **base model only** (7.463B, no adapter).
+2. Self-consistency test on the academic + non-academic proxies (greedy + 3 sampled reasoning paths, majority vote);
+   adopt only with a clear paired gain, and only where test-time compute allows.
+3. Synthetic-data and distillation tracks dropped.
+4. Thu 22: final predictions. Fri 23: reproduction run from a fresh clone (~3.5–5 h). Sat 24 noon: freeze.
+   27 Oct after 15:00: upload FINAL.zip. Submissions only when a dev-validated change exists.
+
 ## 3. Strategy
 
 **Main bet: turn native Sinhala text into curriculum-style MCQs with a larger open teacher model, then train the 8B

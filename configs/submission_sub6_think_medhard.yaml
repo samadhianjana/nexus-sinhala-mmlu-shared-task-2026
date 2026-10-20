@@ -1,0 +1,17 @@
+# Everything the offline submission pipeline needs (inference/predict.py).
+# sub6 (20 Oct): as sub5, plus base-model thinking (adapter off) for medium. Evidence: non-academic Global-MMLU proxy +12.3 [+6.0, +18.3] and easy-style dev not worse (+0.8) vs model A fast. Never chosen on test.
+model: models/gemma-4-E4B-it-text   # base, 7.463B
+lang: en
+chat: true
+method: logit
+n_perms: 4            # vote over 4 cyclic option orders (+2.7 dev vs zero-shot, paired bootstrap)
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [medium, hard]
+think_max_new_tokens: 3072
+adapter: models/adapter_A          # model A as a separate LoRA adapter
+thinking_without_adapter: true

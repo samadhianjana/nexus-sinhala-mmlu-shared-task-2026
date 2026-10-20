@@ -31,6 +31,8 @@ def make_perm(n: int, k: int, mode: str, seed: int, uid: str) -> list[int]:
     """perm[j] = original 0-based index shown at display position j. k=0 is the original order."""
     if k == 0:
         return list(range(n))
+    if mode == "identity":  # repeated samples of the same prompt (self-consistency), no reordering
+        return list(range(n))
     if mode == "cyclic" and k < n:
         return [(j + k) % n for j in range(n)]
     rng = random.Random(f"{seed}|{uid}|{k}")
@@ -91,7 +93,11 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--answer-prefix", default="")
     ap.add_argument("--thinking", action="store_true", help="enable the chat template's thinking mode (use with --method generate)")
     ap.add_argument("--n-perms", type=int, default=1, help="option orders per question (1 = original only)")
-    ap.add_argument("--perm-mode", choices=["cyclic", "random"], default="cyclic")
+    ap.add_argument("--perm-mode", choices=["cyclic", "random", "identity"], default="cyclic",
+                    help="identity + --temperature > 0: n-perms independent samples of the same prompt")
+    ap.add_argument("--temperature", type=float, default=0.0, help="> 0: sampled generation (self-consistency)")
+    ap.add_argument("--top-p", type=float, default=0.95)
+    ap.add_argument("--top-k", type=int, default=64)
     ap.add_argument("--fewshot-file", help="processed JSONL; the same examples precede every question")
     ap.add_argument("--n-shot", type=int, default=0)
     ap.add_argument("--max-new-tokens", type=int, default=16)
@@ -137,6 +143,8 @@ def main() -> None:
     pb = PromptBuilder(tok, lang=args.lang, chat=chat, fewshot=fewshot, answer_prefix=args.answer_prefix,
                        chat_kwargs={"enable_thinking": args.thinking})
     scorer = Scorer(model, tok, pb.add_special_tokens, args.token_budget, args.max_batch, args.max_new_tokens)
+    if args.temperature > 0:
+        scorer.sampling = {"do_sample": True, "temperature": args.temperature, "top_p": args.top_p, "top_k": args.top_k}
     load_s = time.time() - t0
 
     t0 = time.time()

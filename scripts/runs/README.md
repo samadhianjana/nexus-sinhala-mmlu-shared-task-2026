@@ -20,6 +20,8 @@ Reusable tools (data building, evaluation, overlap checks) live one level up in 
 | `run_thinking_tests.sh` | 19 Oct | Thinking mode: model A and base model on the Global-MMLU academic proxy and a dev sample | PLAN.md §2b |
 | `run_softlabels_pilot_sub4_kd.sh` | 19 Oct | Gemma 4 31B soft labels for Global-MMLU; synthetic MCQ pilot; **submission 4** predictions; distillation LoRA (interrupted by the 19 Oct crash) | `data/synth/pilot.stats.json`, PLAN.md |
 | `run_sub5_thinking_kd.sh` | 19–20 Oct | **Submission 5** (base model + adapter A, extracted by `scripts/extract_lora.py`); base-model thinking on dev and non-academic questions; distillation LoRA rerun (no gain: dev −0.9) | PLAN.md, `results/` |
+| `run_sub6.sh` | 20 Oct | **Submission 6** (base-model thinking for medium + hard, adapter A fast vote for easy) | PLAN.md §2c |
+| `run_easy_sc.sh` | 20 Oct | Base-model thinking on all dev (Easy decision); self-consistency (3 samples) on the Global-MMLU proxies | PLAN.md §2c |
 
 Submissions (all chosen on dev / validation, never on test):
 
@@ -30,5 +32,6 @@ Submissions (all chosen on dev / validation, never on test):
 | 3 | `configs/submission_v2.yaml` (v2, 4-order vote) | 54.85 (54.83 / 50.77 / 58.97) |
 | 4 | `configs/submission_A_think_hard.yaml` (model A; thinking for `hard`) | 55.83 (55.30 / 49.51 / 62.68) |
 | 5 | `configs/submission_sub5_route.yaml` (base + adapter A; base-model thinking without adapter for `hard`) | 57.68 (55.14 / 49.87 / 68.04) |
+| 6 | `configs/submission_sub6_think_medhard.yaml` (as 5, thinking also for `medium`) | 59.22 (55.14 / 54.91 / 67.63) |
 
 The final submission is reproduced with `./run_submission.sh` at the repository root.
