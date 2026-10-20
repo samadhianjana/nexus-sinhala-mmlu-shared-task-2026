@@ -3,8 +3,9 @@
   python -m inference.predict --input <test dir | .json | .jsonl> --output predictions.zip
 
 Runs with HF_HUB_OFFLINE=1 (no network); every setting comes from configs/submission.yaml.
-Optional per-question thinking (config `thinking_levels`, e.g. [hard]): questions whose own `level` field is listed are
-answered with the model's thinking mode (greedy, original option order); if no answer can be read from the output,
+Optional LoRA adapter (config `adapter`) on top of `model`. Optional per-question thinking (config `thinking_levels`,
+e.g. [hard]): questions whose own `level` field is listed are answered with the model's thinking mode (with
+`thinking_without_adapter: true`, the adapter is switched off for them) (greedy, original option order); if no answer can be read from the output,
 the fast answer is used. All other questions use the fast logit answer (voted over `n_perms` option orders).
 
 Accepts the SinhalaMMLU JSON layout (list of {q_no, subject, category, question, choices, metadata.difficulty})
@@ -91,7 +92,9 @@ def main() -> None:
     t0 = time.time()
     root = Path(__file__).resolve().parents[1]
     model_path = str(root / cfg["model"]) if (root / cfg["model"]).exists() else cfg["model"]
-    model, tok = load_model(model_path, cfg.get("revision"), cfg.get("dtype", "bfloat16"))
+    adapter = cfg.get("adapter")
+    adapter = str(root / adapter) if adapter and (root / adapter).exists() else adapter
+    model, tok = load_model(model_path, cfg.get("revision"), cfg.get("dtype", "bfloat16"), adapter)
     pb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"])
     scorer = Scorer(model, tok, pb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64))
     records, _ = score_items(items, pb, scorer, cfg["method"], cfg["n_perms"], cfg["perm_mode"], cfg["seed"])
@@ -105,8 +108,13 @@ def main() -> None:
         tpb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"], chat_kwargs={"enable_thinking": True})
         tscorer = Scorer(model, tok, tpb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64),
                          max_new_tokens=cfg.get("think_max_new_tokens", 2048))
-        res = tscorer.generate([tpb.mcq(items[u], items[u]["options"]) for u in think_uids],
-                               [len(items[u]["options"]) for u in think_uids])
+        prompts = [tpb.mcq(items[u], items[u]["options"]) for u in think_uids]
+        n_opts = [len(items[u]["options"]) for u in think_uids]
+        if cfg.get("thinking_without_adapter") and hasattr(model, "disable_adapter"):
+            with model.disable_adapter():  # base model reasons; the adapter (trained to answer at once) does not
+                res = tscorer.generate(prompts, n_opts)
+        else:
+            res = tscorer.generate(prompts, n_opts)
         for u, r in zip(think_uids, res):
             if r["pred"]:
                 think_pred[u] = r["pred"]

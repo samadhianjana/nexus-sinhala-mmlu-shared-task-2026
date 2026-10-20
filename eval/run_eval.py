@@ -83,6 +83,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--config", help="YAML with any of the options below (CLI wins)")
     ap.add_argument("--model")
     ap.add_argument("--revision")
+    ap.add_argument("--adapter", help="LoRA adapter directory loaded on top of --model")
     ap.add_argument("--data", nargs="+", default=["sinhalammlu_dev"])
     ap.add_argument("--method", choices=["logit", "generate", "cloze"], default="logit")
     ap.add_argument("--lang", choices=["en", "si"], default="en", help="instruction language")
@@ -131,7 +132,7 @@ def main() -> None:
         items.update({r["uid"]: r for r in (rows[: args.limit] if args.limit else rows)})
 
     t0 = time.time()
-    model, tok = load_model(args.model, args.revision, args.dtype)
+    model, tok = load_model(args.model, args.revision, args.dtype, args.adapter)
     chat = {"on": True, "off": False}.get(args.chat, tok.chat_template is not None and not BASE_NAME.search(args.model))
     pb = PromptBuilder(tok, lang=args.lang, chat=chat, fewshot=fewshot, answer_prefix=args.answer_prefix,
                        chat_kwargs={"enable_thinking": args.thinking})

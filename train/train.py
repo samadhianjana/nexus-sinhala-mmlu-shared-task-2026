@@ -181,7 +181,8 @@ def load(cfg: dict):
 
 def save(model, tok, src: Path, out: Path, info: dict) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    if hasattr(model, "merge_and_unload"):  # LoRA: save plain merged weights (parameter count = base model)
+    if hasattr(model, "merge_and_unload"):  # LoRA: keep the adapter, then save plain merged weights too
+        model.save_pretrained(out / "adapter")
         model = model.merge_and_unload()
     model.config.use_cache = True
     model.save_pretrained(out, safe_serialization=True)

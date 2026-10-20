@@ -1,0 +1,17 @@
+# Everything the offline submission pipeline needs (inference/predict.py).
+# sub5 (19 Oct): base Gemma 4 E4B + adapter A (LoRA r=16, extracted, ~0.04B); easy/medium fast 4-order vote WITH adapter; hard: thinking WITHOUT adapter (academic proxy: base thinking 79.5 vs A fast 60.1). Never chosen on test.
+model: models/gemma-4-E4B-it-text   # base, 7.463B
+lang: en
+chat: true
+method: logit
+n_perms: 4            # vote over 4 cyclic option orders (+2.7 dev vs zero-shot, paired bootstrap)
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [hard]
+think_max_new_tokens: 3072
+adapter: models/adapter_A          # model A as a separate LoRA adapter
+thinking_without_adapter: true

@@ -19,6 +19,7 @@ Reusable tools (data building, evaluation, overlap checks) live one level up in 
 | `run_v2_and_teachers.sh` | 18 Oct | **v2** (LoRA on Global-MMLU + all dev; submission 3) and its test predictions; teacher evaluations | `reports/teachers.md` |
 | `run_thinking_tests.sh` | 19 Oct | Thinking mode: model A and base model on the Global-MMLU academic proxy and a dev sample | PLAN.md §2b |
 | `run_softlabels_pilot_sub4_kd.sh` | 19 Oct | Gemma 4 31B soft labels for Global-MMLU; synthetic MCQ pilot; **submission 4** predictions; distillation LoRA (interrupted by the 19 Oct crash) | `data/synth/pilot.stats.json`, PLAN.md |
+| `run_sub5_thinking_kd.sh` | 19–20 Oct | **Submission 5** (base model + adapter A, extracted by `scripts/extract_lora.py`); base-model thinking on dev and non-academic questions; distillation LoRA rerun (no gain: dev −0.9) | PLAN.md, `results/` |
 
 Submissions (all chosen on dev / validation, never on test):
 
@@ -28,5 +29,6 @@ Submissions (all chosen on dev / validation, never on test):
 | 2 | `configs/submission_lora_gmmlu_vote.yaml` (model A, 4-order vote) | 54.59 (55.30 / 49.51 / 58.97) |
 | 3 | `configs/submission_v2.yaml` (v2, 4-order vote) | 54.85 (54.83 / 50.77 / 58.97) |
 | 4 | `configs/submission_A_think_hard.yaml` (model A; thinking for `hard`) | 55.83 (55.30 / 49.51 / 62.68) |
+| 5 | `configs/submission_sub5_route.yaml` (base + adapter A; base-model thinking without adapter for `hard`) | 57.68 (55.14 / 49.87 / 68.04) |
 
 The final submission is reproduced with `./run_submission.sh` at the repository root.

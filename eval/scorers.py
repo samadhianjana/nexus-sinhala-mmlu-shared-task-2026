@@ -35,7 +35,7 @@ def resolve_revision(name: str, revision: str | None) -> tuple[str | None, str |
     return sha, sha
 
 
-def load_model(name: str, revision: str | None = None, dtype: str = "bfloat16"):
+def load_model(name: str, revision: str | None = None, dtype: str = "bfloat16", adapter: str | None = None):
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     revision, commit = resolve_revision(name, revision)
@@ -46,6 +46,11 @@ def load_model(name: str, revision: str | None = None, dtype: str = "bfloat16"):
         from transformers import AutoModelForImageTextToText
 
         model = AutoModelForImageTextToText.from_pretrained(name, **kw)
+    if adapter:  # LoRA adapter kept separate (can be switched off per question with model.disable_adapter())
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model, adapter)
+        commit = f"{commit}+adapter:{adapter}"
     model.eval()
     tok = AutoTokenizer.from_pretrained(name, revision=revision)
     tok.padding_side = "left"
