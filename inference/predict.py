@@ -3,6 +3,8 @@
   python -m inference.predict --input <test dir | .json | .jsonl> --output predictions.zip
 
 Runs with HF_HUB_OFFLINE=1 (no network); every setting comes from configs/submission.yaml.
+Optional self-consistency (config `sc_levels`, `sc_samples`, `sc_gate`): greedy + K sampled reasoning paths, majority
+vote; with `sc_gate: disagree` only for questions where the fast answer disagrees with the greedy thinking answer.
 Optional LoRA adapter (config `adapter`) on top of `model`. Optional per-question thinking (config `thinking_levels`,
 e.g. [hard]): questions whose own `level` field is listed are answered with the model's thinking mode (with
 `thinking_without_adapter: true`, the adapter is switched off for them) (greedy, original option order); if no answer can be read from the output,
@@ -21,6 +23,7 @@ import os
 import sys
 import time
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -103,24 +106,56 @@ def main() -> None:
     # Thinking mode for selected levels (decided per question from its own level field)
     think_levels = set(cfg.get("thinking_levels") or [])
     think_uids = [u for u, it in items.items() if it["level"] in think_levels]
-    think_pred, fallbacks = {}, 0
+    think_pred, fallbacks, sc_changed, sc_count = {}, 0, 0, 0
     if think_uids:
         tpb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"], chat_kwargs={"enable_thinking": True})
         tscorer = Scorer(model, tok, tpb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64),
                          max_new_tokens=cfg.get("think_max_new_tokens", 2048))
-        prompts = [tpb.mcq(items[u], items[u]["options"]) for u in think_uids]
-        n_opts = [len(items[u]["options"]) for u in think_uids]
-        if cfg.get("thinking_without_adapter") and hasattr(model, "disable_adapter"):
-            with model.disable_adapter():  # base model reasons; the adapter (trained to answer at once) does not
-                res = tscorer.generate(prompts, n_opts)
-        else:
-            res = tscorer.generate(prompts, n_opts)
-        for u, r in zip(think_uids, res):
+
+        def think(uids: list[str]) -> list[dict]:
+            prompts = [tpb.mcq(items[u], items[u]["options"]) for u in uids]
+            n_opts = [len(items[u]["options"]) for u in uids]
+            if cfg.get("thinking_without_adapter") and hasattr(model, "disable_adapter"):
+                with model.disable_adapter():  # base model reasons; the adapter (trained to answer at once) does not
+                    return tscorer.generate(prompts, n_opts)
+            return tscorer.generate(prompts, n_opts)
+
+        for u, r in zip(think_uids, think(think_uids)):
             if r["pred"]:
                 think_pred[u] = r["pred"]
             else:
                 fallbacks += 1
         print(f"thinking: {len(think_uids)} questions ({sorted(think_levels)}), {fallbacks} fell back to the fast answer")
+
+        # Self-consistency for selected levels: greedy answer + K sampled reasoning paths, majority vote,
+        # ties go to the greedy answer. Fixed seed: reproducible for the same input, code and hardware.
+        sc_levels, k = set(cfg.get("sc_levels") or []), int(cfg.get("sc_samples", 0))
+        sc_uids = [u for u in think_uids if items[u]["level"] in sc_levels]
+        if cfg.get("sc_gate") == "disagree":  # only where the free one-step answer disagrees with greedy thinking
+            sc_uids = [u for u in sc_uids if think_pred.get(u) != agg[u]["pred"]]
+        sc_count = len(sc_uids) if k > 0 else 0
+        if sc_uids and k > 0:
+            import torch
+
+            torch.manual_seed(cfg["seed"])
+            tscorer.sampling = {"do_sample": True, "temperature": cfg.get("sc_temperature", 0.8),
+                                "top_p": cfg.get("sc_top_p", 0.95), "top_k": cfg.get("sc_top_k", 64)}
+            ballots = {u: [think_pred.get(u)] for u in sc_uids}
+            for _ in range(k):
+                for u, r in zip(sc_uids, think(sc_uids)):
+                    ballots[u].append(r["pred"])
+            tscorer.sampling = {}
+            for u, b in ballots.items():
+                counts = Counter(x for x in b if x)
+                if not counts:
+                    continue
+                top = max(counts.values())
+                winners = [a for a, c in counts.items() if c == top]
+                choice = b[0] if b[0] in winners else min(winners)
+                sc_changed += choice != think_pred.get(u)
+                think_pred[u] = choice
+            print(f"self-consistency: {len(sc_uids)} questions ({sorted(sc_levels)}, gate={cfg.get('sc_gate')}), greedy + {k} samples, "
+                  f"{sc_changed} answers changed by the vote")
 
     rows = []
     for uid, it in items.items():
@@ -139,6 +174,8 @@ def main() -> None:
         digest.update(Path(f).read_bytes())
     run = {"config": cfg, "n_questions": len(rows), "seconds": round(time.time() - t0, 1),
            "thinking": {"levels": sorted(think_levels), "questions": len(think_uids), "fallbacks": fallbacks},
+           "self_consistency": {"levels": sorted(set(cfg.get("sc_levels") or [])), "samples": int(cfg.get("sc_samples", 0)),
+                                "gate": cfg.get("sc_gate"), "questions": sc_count, "answers_changed": sc_changed},
            "input_sha256": digest.hexdigest(), "params": loaded_param_stats(model), "env": env_fingerprint()}
     Path(str(args.output) + ".run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False))
     print(f"wrote {len(rows)} predictions -> {args.output} "

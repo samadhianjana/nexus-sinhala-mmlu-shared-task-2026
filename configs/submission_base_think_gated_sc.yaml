@@ -1,0 +1,23 @@
+# Final candidate B (21 Oct): base Gemma 4 E4B, text-only (7.463B, no adapter), thinking for every question.
+# Agreement-gated self-consistency on all levels: where the one-step answer disagrees with greedy thinking, add 3 sampled
+# reasoning paths and take the majority vote (ties -> greedy). Evidence (dev/validation only): full dev, base thinking 63.0 vs
+# model A vote 57.2 (+5.8 [+3.6, +8.0]); pooled proxies, gated self-consistency +2.70 [+1.18, +4.23] on 43% of questions.
+model: models/gemma-4-E4B-it-text
+lang: en
+chat: true
+method: logit          # fast path, used only if a thinking answer cannot be read
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [easy, medium, hard]
+think_max_new_tokens: 3072
+sc_levels: [easy, medium, hard]
+sc_gate: disagree
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64

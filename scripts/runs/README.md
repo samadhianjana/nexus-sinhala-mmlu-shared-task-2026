@@ -22,6 +22,8 @@ Reusable tools (data building, evaluation, overlap checks) live one level up in 
 | `run_sub5_thinking_kd.sh` | 19–20 Oct | **Submission 5** (base model + adapter A, extracted by `scripts/extract_lora.py`); base-model thinking on dev and non-academic questions; distillation LoRA rerun (no gain: dev −0.9) | PLAN.md, `results/` |
 | `run_sub6.sh` | 20 Oct | **Submission 6** (base-model thinking for medium + hard, adapter A fast vote for easy) | PLAN.md §2c |
 | `run_easy_sc.sh` | 20 Oct | Base-model thinking on all dev (Easy decision); self-consistency (3 samples) on the Global-MMLU proxies | PLAN.md §2c |
+| `run_final_candidate.sh` | 21 Oct | Final candidate A: base model only (7.463B), thinking for all levels, self-consistency for hard | PLAN.md |
+| `run_final_candidate_gated.sh` | 21–22 Oct | Final candidate B: as A, with agreement-gated self-consistency on all levels | FUTURE_WORK.md §1 |
 
 Submissions (all chosen on dev / validation, never on test):
 

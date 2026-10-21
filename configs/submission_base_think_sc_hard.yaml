@@ -1,0 +1,22 @@
+# Final candidate (21 Oct): base Gemma 4 E4B, text-only (7.463B, no adapter), thinking for every question.
+# Hard: self-consistency (greedy + 3 sampled reasoning paths, majority vote, ties -> greedy).
+# Evidence (dev / validation only, never test): full dev, base thinking 63.0 vs model A 4-order vote 57.2
+# (+5.8 [+3.6, +8.0]); academic proxy, self-consistency 82.2 vs greedy 79.5 (+2.7 [+0.9, +4.7]).
+model: models/gemma-4-E4B-it-text
+lang: en
+chat: true
+method: logit          # fast path, used only if a thinking answer cannot be read
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [easy, medium, hard]
+think_max_new_tokens: 3072
+sc_levels: [hard]
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64
