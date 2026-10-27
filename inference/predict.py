@@ -65,6 +65,7 @@ def main() -> None:
     ap.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "configs" / "submission.yaml")
     ap.add_argument("--allow-online", action="store_true", help="debugging only; the submission runs offline")
     ap.add_argument("--limit", type=int, help="first N questions only (smoke tests; never for a submission)")
+    ap.add_argument("--levels", nargs="+", help="answer only questions of these levels (then merge with scripts/merge_predictions.py)")
     args = ap.parse_args()
     if not args.allow_online:
         os.environ["HF_HUB_OFFLINE"] = os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -74,7 +75,7 @@ def main() -> None:
     from eval.common import cap_gpu_memory, env_fingerprint, set_seed
     from eval.metrics import aggregate_items
     from eval.prompts import PromptBuilder
-    from eval.run_eval import score_items
+    from eval.run_eval import make_perm, score_items
     from eval.scorers import Scorer, load_model, loaded_param_stats
 
     cfg = yaml.safe_load(args.config.read_text())
@@ -88,6 +89,8 @@ def main() -> None:
         if it["uid"] in items:
             raise SystemExit(f"duplicate question id {it['uid']}")
         items[it["uid"]] = it
+    if args.levels:
+        items = {u: it for u, it in items.items() if it["level"] in set(args.levels)}
     if args.limit:
         items = dict(list(items.items())[: args.limit])
     print(f"{len(items)} questions from {args.input}")
@@ -100,27 +103,36 @@ def main() -> None:
     model, tok = load_model(model_path, cfg.get("revision"), cfg.get("dtype", "bfloat16"), adapter)
     pb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"])
     scorer = Scorer(model, tok, pb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64))
-    records, _ = score_items(items, pb, scorer, cfg["method"], cfg["n_perms"], cfg["perm_mode"], cfg["seed"])
+    if cfg.get("fast_without_adapter") and hasattr(model, "disable_adapter"):
+        with model.disable_adapter():  # fast one-step answer from the plain base model (used by the agreement gate)
+            records, _ = score_items(items, pb, scorer, cfg["method"], cfg["n_perms"], cfg["perm_mode"], cfg["seed"])
+    else:
+        records, _ = score_items(items, pb, scorer, cfg["method"], cfg["n_perms"], cfg["perm_mode"], cfg["seed"])
     agg = aggregate_items(items, records)
 
     # Thinking mode for selected levels (decided per question from its own level field)
     think_levels = set(cfg.get("thinking_levels") or [])
     think_uids = [u for u, it in items.items() if it["level"] in think_levels]
     think_pred, fallbacks, sc_changed, sc_count = {}, 0, 0, 0
-    if think_uids:
+    perm_levels, k_perm = set(cfg.get("perm_think_levels") or []), int(cfg.get("perm_think_orders", 0))
+    perm_uids = [u for u, it in items.items() if it["level"] in perm_levels] if k_perm > 0 else []
+    perm_changed = 0
+    if think_uids or perm_uids:
         tpb = PromptBuilder(tok, lang=cfg["lang"], chat=cfg["chat"], chat_kwargs={"enable_thinking": True})
         tscorer = Scorer(model, tok, tpb.add_special_tokens, cfg.get("token_budget", 32768), cfg.get("max_batch", 64),
                          max_new_tokens=cfg.get("think_max_new_tokens", 2048))
 
-        def think(uids: list[str]) -> list[dict]:
-            prompts = [tpb.mcq(items[u], items[u]["options"]) for u in uids]
-            n_opts = [len(items[u]["options"]) for u in uids]
+        def think_prompts(prompts: list[str], n_opts: list[int]) -> list[dict]:
             if cfg.get("thinking_without_adapter") and hasattr(model, "disable_adapter"):
                 with model.disable_adapter():  # base model reasons; the adapter (trained to answer at once) does not
                     return tscorer.generate(prompts, n_opts)
             return tscorer.generate(prompts, n_opts)
 
-        for u, r in zip(think_uids, think(think_uids)):
+        def think(uids: list[str]) -> list[dict]:
+            return think_prompts([tpb.mcq(items[u], items[u]["options"]) for u in uids],
+                                 [len(items[u]["options"]) for u in uids])
+
+        for u, r in (zip(think_uids, think(think_uids)) if think_uids else []):
             if r["pred"]:
                 think_pred[u] = r["pred"]
             else:
@@ -157,6 +169,37 @@ def main() -> None:
             print(f"self-consistency: {len(sc_uids)} questions ({sorted(sc_levels)}, gate={cfg.get('sc_gate')}), greedy + {k} samples, "
                   f"{sc_changed} answers changed by the vote")
 
+        # Option-order self-consistency: re-ask with the options in K other (cyclic) orders, thinking each time; the vote is over
+        # the previous answer (the `prior_predictions` file if given, else the answer so far) and the K re-orderings, ties
+        # go to the previous answer. Votes are mapped back to the original option numbering.
+        if perm_uids:
+            prior = {}
+            if cfg.get("prior_predictions"):
+                with zipfile.ZipFile(root / cfg["prior_predictions"]) as z:
+                    for line in z.read("predictions.jsonl").decode("utf-8").splitlines():
+                        r = json.loads(line)
+                        prior[(r["level"], r["subject"], r["q_no"])] = int(r["answer"])
+            ballots = {u: [prior.get((items[u]["level"], items[u]["subject_raw"], items[u]["q_no"]), think_pred.get(u))]
+                       for u in perm_uids}
+            for kk in range(1, k_perm + 1):
+                perms = {u: make_perm(len(items[u]["options"]), kk, "cyclic", cfg["seed"], u) for u in perm_uids}
+                res = think_prompts([tpb.mcq(items[u], [items[u]["options"][j] for j in perms[u]]) for u in perm_uids],
+                                    [len(items[u]["options"]) for u in perm_uids])
+                for u, r in zip(perm_uids, res):
+                    ballots[u].append(perms[u][r["pred"] - 1] + 1 if r["pred"] else None)
+                print(f"option-order thinking: order {kk}/{k_perm} done ({len(perm_uids)} questions)", flush=True)
+            for u, b in ballots.items():
+                counts = Counter(x for x in b if x)
+                if not counts:
+                    continue
+                top = max(counts.values())
+                winners = [a for a, c in counts.items() if c == top]
+                choice = b[0] if b[0] in winners else min(winners)
+                perm_changed += choice != b[0]
+                think_pred[u] = choice
+            print(f"option-order self-consistency: {len(perm_uids)} questions ({sorted(perm_levels)}), {k_perm} extra orders, "
+                  f"{perm_changed} answers changed by the vote")
+
     rows = []
     for uid, it in items.items():
         n = len(it["options"])
@@ -176,6 +219,8 @@ def main() -> None:
            "thinking": {"levels": sorted(think_levels), "questions": len(think_uids), "fallbacks": fallbacks},
            "self_consistency": {"levels": sorted(set(cfg.get("sc_levels") or [])), "samples": int(cfg.get("sc_samples", 0)),
                                 "gate": cfg.get("sc_gate"), "questions": sc_count, "answers_changed": sc_changed},
+           "option_order_sc": {"levels": sorted(perm_levels), "orders": k_perm, "questions": len(perm_uids),
+                               "answers_changed": perm_changed},
            "input_sha256": digest.hexdigest(), "params": loaded_param_stats(model), "env": env_fingerprint()}
     Path(str(args.output) + ".run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False))
     print(f"wrote {len(rows)} predictions -> {args.output} "

@@ -47,12 +47,12 @@ def resolve_data(name: str) -> Path:
 
 
 def score_items(items: dict[str, dict], pb: PromptBuilder, scorer, method: str, n_perms: int,
-                perm_mode: str, seed: int) -> tuple[list[dict], str | None]:
+                perm_mode: str, seed: int, first_perm: int = 0) -> tuple[list[dict], str | None]:
     """One record per (question, option order). Shared by evaluation and the submission pipeline.
     Items without a gold answer (test data) get gold/correct = None."""
     n_perms = 1 if method == "cloze" else n_perms
     jobs = [(uid, k, make_perm(len(it["options"]), k, perm_mode, seed, uid))
-            for uid, it in items.items() for k in range(n_perms)]
+            for uid, it in items.items() for k in range(first_perm, n_perms)]
     first_prompt = None
     if method == "cloze":
         res = scorer.cloze([pb.cloze_context(items[u]) for u, _, _ in jobs], [items[u]["options"] for u, _, _ in jobs])
@@ -93,6 +93,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--answer-prefix", default="")
     ap.add_argument("--thinking", action="store_true", help="enable the chat template's thinking mode (use with --method generate)")
     ap.add_argument("--n-perms", type=int, default=1, help="option orders per question (1 = original only)")
+    ap.add_argument("--first-perm", type=int, default=0, help="skip the first orders (1 = skip the original order)")
     ap.add_argument("--perm-mode", choices=["cyclic", "random", "identity"], default="cyclic",
                     help="identity + --temperature > 0: n-perms independent samples of the same prompt")
     ap.add_argument("--temperature", type=float, default=0.0, help="> 0: sampled generation (self-consistency)")
@@ -148,7 +149,7 @@ def main() -> None:
     load_s = time.time() - t0
 
     t0 = time.time()
-    records, first_prompt = score_items(items, pb, scorer, args.method, args.n_perms, args.perm_mode, args.seed)
+    records, first_prompt = score_items(items, pb, scorer, args.method, args.n_perms, args.perm_mode, args.seed, args.first_perm)
     score_s = time.time() - t0
     if first_prompt:
         (out / "example_prompt.txt").write_text(first_prompt, encoding="utf-8")

@@ -1,0 +1,22 @@
+# Round 2 (27 Oct): LoRA r=16 on the base model OWN correct thinking traces: SinhalaMMLU dev (minus held-out 400) + Global-MMLU (humanities/social/other/business) + synthetic Wikipedia MCQs.
+mode: trace
+model: models/gemma-4-E4B-it-text
+out_dir: models/rft_v2
+data: [data/synth/rft_traces.jsonl, data/synth/rft2_traces.jsonl]
+lang: en
+max_len: 4096
+epochs: 1
+batch_size: 16
+micro_tokens: 12000
+lr: 1.0e-4
+min_lr_ratio: 0.1
+warmup_steps: 5
+weight_decay: 0.0
+max_grad_norm: 1.0
+lora: {r: 16, alpha: 32, dropout: 0.0, targets: all-linear}
+ckpt_every: 1
+compile: false
+seed: 1234
+gpu_mem_gb: 100
+keep_checkpoints: 1
+log_every: 5

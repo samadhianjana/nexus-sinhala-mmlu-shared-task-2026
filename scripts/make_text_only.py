@@ -28,6 +28,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("repo")
     ap.add_argument("--out")
+    ap.add_argument("--revision", help="full commit sha of the source repo (default: latest)")
     args = ap.parse_args()
     load_env()
     import torch
@@ -35,7 +36,7 @@ def main() -> None:
     from huggingface_hub import HfApi, snapshot_download
     from transformers import AutoConfig, AutoModelForImageTextToText, AutoTokenizer
 
-    sha = HfApi().model_info(args.repo).sha
+    sha = HfApi().model_info(args.repo, revision=args.revision).sha
     out = Path(args.out or ROOT / "models" / f"{args.repo.split('/')[-1]}-text")
     cfg = AutoConfig.from_pretrained(args.repo, revision=sha)
     full = AutoModelForImageTextToText.from_pretrained(args.repo, revision=sha, dtype=torch.bfloat16, device_map="cpu")

@@ -95,6 +95,50 @@ def sft_examples(cfg: dict, tok, epoch: int) -> list[dict]:
     return out
 
 
+def trace_examples(cfg: dict, tok) -> list[dict]:
+    """Prompt (thinking-mode chat prompt, as at inference) + the model's own correct reasoning trace; loss on the trace."""
+    from eval.prompts import PromptBuilder
+
+    pb = PromptBuilder(tok, lang=cfg.get("lang", "en"), chat=True, chat_kwargs={"enable_thinking": True})
+    out = []
+    for f in cfg["data"]:
+        for r in read_jsonl(ROOT / f):
+            p_ids = tok(pb.mcq(r, r["options"]), add_special_tokens=False)["input_ids"]
+            c_ids = tok(r["completion"], add_special_tokens=False)["input_ids"]
+            if len(p_ids) + len(c_ids) > cfg.get("max_len", 4096):
+                continue
+            out.append({"ids": p_ids + c_ids, "n_prompt": len(p_ids)})
+    random.Random(cfg["seed"]).shuffle(out)
+    return out
+
+
+def trace_steps(examples: list[dict], batch_size: int, micro_tokens: int, pad_id: int):
+    import torch
+
+    for s in range(0, len(examples) - batch_size + 1, batch_size):
+        chunk = sorted(examples[s:s + batch_size], key=lambda e: len(e["ids"]))
+        micros, cur = [], []
+        for e in chunk:
+            if cur and max(len(x["ids"]) for x in cur + [e]) * (len(cur) + 1) > micro_tokens:
+                micros.append(cur)
+                cur = []
+            cur.append(e)
+        micros.append(cur)
+        batches = []
+        for m in micros:
+            L = max(len(e["ids"]) for e in m)
+            ids = torch.full((len(m), L), pad_id, dtype=torch.long)
+            mask = torch.zeros((len(m), L), dtype=torch.long)
+            labels = torch.full((len(m), L), -100, dtype=torch.long)
+            for i, e in enumerate(m):
+                n = len(e["ids"])
+                ids[i, :n] = torch.tensor(e["ids"])
+                mask[i, :n] = 1
+                labels[i, e["n_prompt"]:n] = ids[i, e["n_prompt"]:n]
+            batches.append({"input_ids": ids, "attention_mask": mask, "labels": labels})
+        yield batches
+
+
 def sft_steps(examples: list[dict], batch_size: int, micro_tokens: int, pad_id: int):
     """Yield optimizer steps; each is a list of right-padded micro-batches (token budget), batch_size examples."""
     import torch
@@ -243,6 +287,14 @@ def main() -> None:
         it = cpt_batches(tokens, cfg["seq_len"], cfg["micro_batch"])
         steps = ([next(it) for _ in range(cfg["grad_accum"])] for _ in range(total))
         save_every = max(1, int(cfg.get("save_every_tokens", 1e18) // per_step))
+    elif cfg["mode"] == "trace":
+        ex = trace_examples(cfg, tok)
+        per_epoch = len(ex) // cfg["batch_size"]
+        total = per_epoch * cfg["epochs"]
+        steps = (s for _ in range(cfg["epochs"])
+                 for s in trace_steps(ex, cfg["batch_size"], cfg["micro_tokens"], tok.pad_token_id))
+        save_every = per_epoch
+        print(f"trace examples: {len(ex)}", flush=True)
     else:
         n_ex = len(sft_examples(cfg, tok, 0))
         per_epoch = n_ex // cfg["batch_size"]
@@ -273,6 +325,9 @@ def main() -> None:
             if cfg["mode"] == "cpt":
                 loss = lm_loss(model, b["input_ids"], b["input_ids"], cfg.get("loss", "liger")) / len(micro_batches)
                 tokens_seen += b["input_ids"].numel()
+            elif cfg["mode"] == "trace":
+                loss = lm_loss(model, b["input_ids"], b["labels"], cfg.get("loss", "liger"), b["attention_mask"]) / len(micro_batches)
+                tokens_seen += int(b["attention_mask"].sum())
             else:
                 loss = sft_loss(model, b, cfg["batch_size"], cfg.get("kd_alpha", 0.0))
                 tokens_seen += int(b["attention_mask"].sum())

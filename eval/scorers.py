@@ -118,6 +118,7 @@ class Scorer:
         self.add_special = add_special_tokens
         self.token_budget, self.max_batch = token_budget, max_batch
         self.max_new_tokens = max_new_tokens
+        self.keep_raw = False  # also return the raw completion (thought channel included) for training on traces
         self.sampling: dict = {}  # e.g. {"do_sample": True, "temperature": 0.8, "top_p": 0.95, "top_k": 64}
 
     def _encode(self, texts: list[str]):
@@ -168,6 +169,10 @@ class Scorer:
                 probs = [1.0 if pred == k else 0.0 for k in range(1, n + 1)]
                 n_new = int((new[row] != self.tok.pad_token_id).sum())
                 results[i] = {"probs": probs, "pred": pred, "text": texts[row][-2000:], "new_tokens": n_new}
+                if self.keep_raw:
+                    rc = raw[row].replace(self.tok.pad_token or "", "") if self.tok.pad_token else raw[row]
+                    cut = rc.find("<turn|>")
+                    results[i]["raw"] = rc[: cut + len("<turn|>")] if cut >= 0 else rc
         return results
 
     @torch.no_grad()

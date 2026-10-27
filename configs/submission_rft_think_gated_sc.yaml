@@ -1,0 +1,27 @@
+# Final candidate C (26-27 Oct): base Gemma 4 E4B + LoRA adapter trained on the base model's own correct reasoning traces
+# (rejection sampling, SinhalaMMLU dev minus a held-out 400; ~7.50B parameters). Thinking for every question with the adapter ON;
+# the fast one-step answer for the agreement gate comes from the plain base model (adapter off).
+# Agreement-gated self-consistency on all levels, as candidate B. Chosen only if it passes the pre-registered held-out
+# validation rule in eval/decide_rft.py (never on test).
+model: models/gemma-4-E4B-it-text
+adapter: models/rft_v1/step-ADAPTER/adapter
+thinking_without_adapter: false
+fast_without_adapter: true
+lang: en
+chat: true
+method: logit
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [easy, medium, hard]
+think_max_new_tokens: 3072
+sc_levels: [easy, medium, hard]
+sc_gate: disagree
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64

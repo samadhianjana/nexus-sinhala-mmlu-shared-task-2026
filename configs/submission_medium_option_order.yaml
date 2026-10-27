@@ -1,0 +1,20 @@
+# Medium-only option-order self-consistency (27 Oct): base Gemma 4 E4B text-only (7.463B, no adapter). For every medium question,
+# thinking under 3 extra cyclic option orders; vote over the previous answer (candidate B's) and the 3 re-orderings, ties -> previous.
+# Run with --levels medium and merge into candidate B (scripts/merge_predictions.py). Chosen only if eval/perm_sc.py says GO on the
+# held-out stand-in (never on test).
+model: models/gemma-4-E4B-it-text
+lang: en
+chat: true
+method: logit
+n_perms: 1
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: []
+think_max_new_tokens: 3072
+perm_think_levels: [medium]
+perm_think_orders: 3
+prior_predictions: results/submissions/final_candidate_base_think_gated_sc.zip

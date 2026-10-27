@@ -1,0 +1,26 @@
+# Candidate D (27 Oct), MEDIUM ONLY: base Gemma 4 E4B + LoRA adapter trained on the base model's own correct reasoning traces
+# (dev minus held-out 400, Global-MMLU, synthetic Wikipedia MCQs; ~7.50B parameters). Thinking with the adapter ON; the fast answer
+# for the agreement gate comes from the plain base model. Agreement-gated self-consistency. Run with --levels medium and merge into
+# candidate B (scripts/merge_predictions.py). Chosen only if it passes the pre-registered held-out validation (eval/decide_rft.py).
+model: models/gemma-4-E4B-it-text
+adapter: models/rft_v2/step-ADAPTER/adapter
+thinking_without_adapter: false
+fast_without_adapter: true
+lang: en
+chat: true
+method: logit
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [medium]
+think_max_new_tokens: 3072
+sc_levels: [medium]
+sc_gate: disagree
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64
