@@ -5,6 +5,7 @@
 Runs with HF_HUB_OFFLINE=1 (no network); every setting comes from configs/submission.yaml.
 Optional self-consistency (config `sc_levels`, `sc_samples`, `sc_gate`): greedy + K sampled reasoning paths, majority
 vote; with `sc_gate: disagree` only for questions where the fast answer disagrees with the greedy thinking answer.
+Every thinking answer (greedy first, then samples) is also written to <output>.ballots.jsonl (scripts/pool_ballots.py).
 Optional LoRA adapter (config `adapter`) on top of `model`. Optional per-question thinking (config `thinking_levels`,
 e.g. [hard]): questions whose own `level` field is listed are answered with the model's thinking mode (with
 `thinking_without_adapter: true`, the adapter is switched off for them) (greedy, original option order); if no answer can be read from the output,
@@ -138,6 +139,7 @@ def main() -> None:
             else:
                 fallbacks += 1
         print(f"thinking: {len(think_uids)} questions ({sorted(think_levels)}), {fallbacks} fell back to the fast answer")
+        all_ballots = {u: [think_pred.get(u)] for u in think_uids}  # saved to <output>.ballots.jsonl for cross-model pooling
 
         # Self-consistency for selected levels: greedy answer + K sampled reasoning paths, majority vote,
         # ties go to the greedy answer. Fixed seed: reproducible for the same input, code and hardware.
@@ -156,6 +158,7 @@ def main() -> None:
             for _ in range(k):
                 for u, r in zip(sc_uids, think(sc_uids)):
                     ballots[u].append(r["pred"])
+                    all_ballots[u].append(r["pred"])
             tscorer.sampling = {}
             for u, b in ballots.items():
                 counts = Counter(x for x in b if x)
@@ -212,6 +215,10 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("predictions.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    if think_uids:  # greedy + sampled thinking answers per question (None = unparsed), first = greedy
+        Path(str(args.output) + ".ballots.jsonl").write_text("".join(
+            json.dumps({"level": items[u]["level"], "subject": items[u]["subject_raw"], "q_no": items[u]["q_no"],
+                        "ballots": all_ballots[u]}, ensure_ascii=False) + "\n" for u in think_uids), encoding="utf-8")
     digest = hashlib.sha256()
     for f in sorted({str(f) for f, _ in raw}):
         digest.update(Path(f).read_bytes())

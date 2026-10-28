@@ -1,0 +1,21 @@
+# Cross-model pooling, part 1 (27 Oct), MEDIUM ONLY: base Gemma 4 E4B, greedy thinking + 3 sampled paths on EVERY question
+# (no agreement gate); every answer is saved to <output>.ballots.jsonl. scripts/pool_ballots.py votes over these ballots and the
+# RFT2 model's (configs/submission_pool_rft2_medium.yaml) and merges into candidate B. Used only if eval/pool_decide.py says GO.
+model: models/gemma-4-E4B-it-text
+lang: en
+chat: true
+method: logit
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [medium]
+think_max_new_tokens: 3072
+sc_levels: [medium]
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64

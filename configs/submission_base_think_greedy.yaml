@@ -1,0 +1,20 @@
+# Final submitted system (Team Nexus): base Gemma 4 E4B, text-only (7.463B, no adapter), greedy thinking for every question,
+# no sampling and no self-consistency. Codabench submission ID 157, macro average 61.72.
+model: models/gemma-4-E4B-it-text
+lang: en
+chat: true
+method: logit          # fast path, used only if a thinking answer cannot be read
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [easy, medium, hard]
+think_max_new_tokens: 3072
+sc_levels: []
+sc_samples: 0
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64

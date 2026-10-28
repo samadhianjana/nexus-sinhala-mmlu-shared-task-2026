@@ -7,8 +7,12 @@ Only open-weight models **released before 2026-10-01**.
 
 ## Final submission
 
-_Not yet decided._ Fill in: base model + commit, every fine-tuned derivative (merged weights location + hash),
-total parameter count of everything loaded, and the command that loads it.
+- Base model: `google/gemma-4-E4B-it` @ `ee0ef6023621cff504d758262d4e04895a5af4a2`, text-only extraction
+  (`scripts/make_text_only.py`), published as `SinhalaMMLU-SharedTask/team-nexus-gemma-4-e4b-it-text`.
+- No fine-tuned derivative is used: no adapter, no merged weights.
+- Total parameters loaded: 7,463,013,376.
+- Command: `python inference.py` in the team repo, which runs `inference/predict.py` with
+  `configs/submission_base_think_greedy.yaml` (Codabench submission ID 157, score 61.72).
 
 ## Candidate parameter accounting
 

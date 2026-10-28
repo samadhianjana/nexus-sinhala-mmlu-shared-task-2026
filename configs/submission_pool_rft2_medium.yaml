@@ -1,0 +1,21 @@
+# Cross-model pooling, part 2 (27 Oct), MEDIUM ONLY: the RFT2 model (base + reasoning-trace LoRA, 7.50B parameters, adapter ON),
+# greedy thinking + 3 sampled paths on every question (no gate); ballots saved for scripts/pool_ballots.py.
+model: models/gemma-4-E4B-it-text
+adapter: models/rft_v2/step-141/adapter
+lang: en
+chat: true
+method: logit
+n_perms: 4
+perm_mode: cyclic
+seed: 1234
+dtype: bfloat16
+gpu_mem_gb: 100
+token_budget: 32768
+max_batch: 64
+thinking_levels: [medium]
+think_max_new_tokens: 3072
+sc_levels: [medium]
+sc_samples: 3
+sc_temperature: 0.8
+sc_top_p: 0.95
+sc_top_k: 64

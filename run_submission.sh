@@ -8,7 +8,7 @@
 # model weights referenced by the config under models/. No network access is used (HF_HUB_OFFLINE=1).
 set -euo pipefail
 cd "$(dirname "$0")"
-CONFIG=${1:-configs/submission_sub6_think_medhard.yaml}   # final configuration (updated at the config freeze)
+CONFIG=${1:-configs/submission_base_think_greedy.yaml}   # final submitted system (Codabench ID 157)
 INPUT=${2:-data/test}
 OUTPUT=${3:-results/submissions/final.zip}
 
