@@ -1,5 +1,10 @@
 # SinhalaMMLU shared task (≤ 8B)
 
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97-team--nexus-yellow)](https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus)
+
+**Code and experiments behind Team Nexus's 3rd-place entry in the ICTer 2026 SinhalaMMLU Shared Task.**
+
 System for the ICTer 2026 SinhalaMMLU shared task: Sinhala multiple-choice QA with open-weight models totalling
 ≤ 8B parameters, no retrieval, no internet at inference. Built on SinhalaMMLU (Pramodya et al., EMNLP 2025):
 
@@ -15,7 +20,62 @@ System for the ICTer 2026 SinhalaMMLU shared task: Sinhala multiple-choice QA wi
 }
 ```
 
-**Keep this repository private until the final deadline. Never commit task data (`data/` is git-ignored).**
+## Result
+
+**Team Nexus placed 3rd on the hidden test set of the SinhalaMMLU Shared Task (ICTer 2026).** The submitted system is the
+base model `google/gemma-4-E4B-it` with its vision and audio towers removed (7.463B parameters, weights unchanged),
+prompted zero-shot with Gemma 4's built-in thinking mode and **greedy decoding** (no sampling, no fine-tuning, no extra data).
+
+Public Codabench leaderboard scores (provisional, before the hidden-test ranking):
+
+| Easy | Medium | Hard | Macro Avg |
+|---:|---:|---:|---:|
+| 63.55 | 54.19 | 67.42 | **61.72** |
+
+The submitted configuration is `configs/submission_base_think_greedy.yaml`.
+The development work in this repository also covers LoRA and full fine-tuning, continued pre-training, distillation,
+reasoning-trace tuning and self-consistency; none of them beat the base model with thinking on held-out data.
+
+## How the score improved
+
+Every step below was a Codabench submission, scored on the public test leaderboard (provisional, Macro Avg of Easy, Medium
+and Hard). Each row builds on an earlier row.
+
+| Step | What changed | Easy | Medium | Hard | Macro |
+|---|---|---:|---:|---:|---:|
+| S1 | Zero-shot Gemma 4 E4B, one-step answer | – | – | – | 51.59 |
+| S2 | LoRA on Global-MMLU `si` + voting over 4 option orders | 55.30 | 49.51 | 58.97 | 54.59 |
+| S3 | + all SinhalaMMLU dev questions in training | 54.83 | 50.77 | 58.97 | 54.85 |
+| S4 | + thinking mode on Hard | 55.30 | 49.51 | 62.68 | 55.83 |
+| S5 | Base model (no adapter) does the thinking on Hard | 55.14 | 49.87 | 68.04 | 57.68 |
+| S6 | + thinking on Medium | 55.14 | 54.91 | 67.63 | 59.22 |
+| S7 | Base model only, thinking on all levels, + sampled self-consistency | 63.40 | 55.09 | 70.31 | 62.93 |
+| S8 | S7 with Medium from a reasoning-trace LoRA | 63.40 | ≈53.8 | 70.31 | 62.51 |
+| **Final** | **Base model only, greedy thinking on all levels (no sampling)** | **63.55** | **54.19** | **67.42** | **61.72** |
+
+![Macro Avg of each submission](docs/score_progression.png)
+
+*Test leaderboard Macro Avg of each submission (provisional). The vertical axis starts at 45%.*
+
+What moved the score:
+
+- **Thinking mode is the main gain.** From S2 to the final system, Hard goes from 58.97 to 67.42, Easy from 55.30 to 63.55
+  and Medium from 49.51 to 54.19, with no training at all.
+- **Fine-tuning stopped helping once the model could reason.** An adapter trained to answer immediately made the model
+  skip its reasoning (it reasoned on 26% of academic questions, against 100% for the base model), so the final system
+  drops the adapter (S4 to S5: Hard +5.4).
+- **Sampled voting was worth about 1.2 points** (S7 against Final, mostly on Hard), but the task asks for deterministic
+  inference with no sampling, so the submitted system is the greedy one. The sampling variant is still in the code behind
+  `SELF_CONSISTENCY = True` in the Hugging Face package.
+- S8's Medium score is derived from its Macro Avg; S1's per-level scores were not recorded.
+
+| Resource | Link |
+|---|---|
+| Reproducibility package (`inference.py`, `predictions.jsonl`, code) | https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus |
+| Text-only Gemma 4 E4B-it weights | https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus-gemma-4-e4b-it-text |
+
+**Task data is never committed** (`data/` is git-ignored). The SinhalaMMLU data is licensed CC BY-NC-ND 4.0; fetch it
+yourself with `scripts/fetch_data.py`.
 
 ## Layout
 
@@ -33,7 +93,7 @@ System for the ICTer 2026 SinhalaMMLU shared task: Sinhala multiple-choice QA wi
 | `MODEL_MANIFEST.md` | Every model: exact total parameters, release date, license |
 | `DATA_LOG.md` | Every dataset and every closed-API data-generation use |
 
-## Setup (DGX Spark, aarch64, CUDA 13)
+## Setup
 
 ```bash
 python3 -m venv .venv
@@ -53,9 +113,6 @@ for p in libpython3.12-dev python3.12-dev; do
   curl -fO "http://ports.ubuntu.com/ubuntu-ports/pool/main/p/python3.12/${p}_${V}_arm64.deb"; done
 for f in *.deb; do dpkg -x "$f" root; done
 ```
-
-Long GPU jobs: PyTorch is capped at 100 GB (`SMMLU_GPU_MEM_GB`). The Spark shares memory between CPU and GPU, so
-an uncapped job triggers the kernel OOM killer (which also kills tmux) instead of a CUDA out-of-memory error.
 
 ## Commands
 
@@ -89,5 +146,24 @@ scripts/runs/run_baselines.sh                     # zero-shot baselines -> resul
 - Total parameters of everything loaded at inference ≤ 8B (embeddings, vision/audio towers if loaded, adapters).
 - Open-weight models released before 2026-10-01 only. No API, internet or retrieval of any kind at inference.
 - Fixed few-shot examples only (identical for every question). No training, tuning or prompt design on test questions.
-- Closed APIs only for training-data generation, logged in `DATA_LOG.md`.
+- No closed or paid APIs were used at any stage (see `DATA_LOG.md`).
 - Final pipeline runs offline from one command with pinned versions and fixed seeds.
+
+## Contributors
+
+Team Nexus, Department of Computer Science and Engineering, University of Moratuwa:
+
+- S.A. Talagala
+- Anas Hussaindeen
+- Ifadha Imthiyas
+- V.D.W. Muthumala
+
+## Citation
+
+If you use this code, please cite it with [`CITATION.cff`](CITATION.cff) and cite the SinhalaMMLU paper above.
+
+## License
+
+The code in this repository is released under the [Apache License 2.0](LICENSE). Datasets and models keep their own
+licences: SinhalaMMLU is CC BY-NC-ND 4.0, and Gemma 4, Global-MMLU, FineWeb-2, NSINA and the other resources listed in
+`DATA_LOG.md` and `MODEL_MANIFEST.md` are under the terms given there.

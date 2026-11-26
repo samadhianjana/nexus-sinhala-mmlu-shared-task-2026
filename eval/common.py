@@ -64,9 +64,8 @@ def set_seed(seed: int) -> None:
 def cap_gpu_memory(gb: float | None = None) -> None:
     """Limit PyTorch's CUDA allocator (default 100 GB, env SMMLU_GPU_MEM_GB).
 
-    The DGX Spark shares one 128 GB pool between CPU and GPU: an unbounded GPU job does not get a CUDA
-    out-of-memory error, it starves the system and the kernel OOM killer takes down the desktop session and
-    tmux (10 Oct, 11:15). With the cap, the job fails with torch.OutOfMemoryError and everything else survives.
+    With a cap, a job that runs out of memory fails with torch.OutOfMemoryError instead of starving the rest of the
+    system.
     """
     import torch
 

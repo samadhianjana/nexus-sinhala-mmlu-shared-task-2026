@@ -17,13 +17,13 @@ Reusable tools (data building, evaluation, overlap checks) live one level up in 
 | `run_abc.sh` | 12 Oct | **Model A** (LoRA on Global-MMLU, basis of submissions 2 and 4); dev 5-fold LoRA (B); continued-pretraining pilot (C) | `reports/experiments_abc.md` |
 | `download_teachers.sh` | 18 Oct | Downloads of the teacher candidates (data generation only, never inference) | — |
 | `run_v2_and_teachers.sh` | 18 Oct | **v2** (LoRA on Global-MMLU + all dev; submission 3) and its test predictions; teacher evaluations | `reports/teachers.md` |
-| `run_thinking_tests.sh` | 19 Oct | Thinking mode: model A and base model on the Global-MMLU academic proxy and a dev sample | PLAN.md §2b |
-| `run_softlabels_pilot_sub4_kd.sh` | 19 Oct | Gemma 4 31B soft labels for Global-MMLU; synthetic MCQ pilot; **submission 4** predictions; distillation LoRA (interrupted by the 19 Oct crash) | `data/synth/pilot.stats.json`, PLAN.md |
-| `run_sub5_thinking_kd.sh` | 19–20 Oct | **Submission 5** (base model + adapter A, extracted by `scripts/extract_lora.py`); base-model thinking on dev and non-academic questions; distillation LoRA rerun (no gain: dev −0.9) | PLAN.md, `results/` |
-| `run_sub6.sh` | 20 Oct | **Submission 6** (base-model thinking for medium + hard, adapter A fast vote for easy) | PLAN.md §2c |
-| `run_easy_sc.sh` | 20 Oct | Base-model thinking on all dev (Easy decision); self-consistency (3 samples) on the Global-MMLU proxies | PLAN.md §2c |
-| `run_final_candidate.sh` | 21 Oct | Final candidate A: base model only (7.463B), thinking for all levels, self-consistency for hard | PLAN.md |
-| `run_final_candidate_gated.sh` | 21–22 Oct | Final candidate B: as A, with agreement-gated self-consistency on all levels | FUTURE_WORK.md §1 |
+| `run_thinking_tests.sh` | 19 Oct | Thinking mode: model A and base model on the Global-MMLU academic proxy and a dev sample | `reports/`, `results/` |
+| `run_softlabels_pilot_sub4_kd.sh` | 19 Oct | Gemma 4 31B soft labels for Global-MMLU; synthetic MCQ pilot; **submission 4** predictions; distillation LoRA (interrupted by the 19 Oct crash) | `data/synth/pilot.stats.json` |
+| `run_sub5_thinking_kd.sh` | 19–20 Oct | **Submission 5** (base model + adapter A, extracted by `scripts/extract_lora.py`); base-model thinking on dev and non-academic questions; distillation LoRA rerun (no gain: dev −0.9) | `results/` |
+| `run_sub6.sh` | 20 Oct | **Submission 6** (base-model thinking for medium + hard, adapter A fast vote for easy) | `reports/`, `results/` |
+| `run_easy_sc.sh` | 20 Oct | Base-model thinking on all dev (Easy decision); self-consistency (3 samples) on the Global-MMLU proxies | `reports/`, `results/` |
+| `run_final_candidate.sh` | 21 Oct | Final candidate A: base model only (7.463B), thinking for all levels, self-consistency for hard | `results/` |
+| `run_final_candidate_gated.sh` | 21–22 Oct | Final candidate B: as A, with agreement-gated self-consistency on all levels | `results/` |
 
 Submissions (all chosen on dev / validation, never on test):
 

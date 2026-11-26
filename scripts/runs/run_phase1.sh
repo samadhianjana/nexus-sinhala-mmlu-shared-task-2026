@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 1 checks (PLAN.md):
+# Phase 1 checks:
 #   1. text-only Gemma 4 E4B: extract, evaluate, compare with the multimodal baseline
 #   2. offline submission pipeline on the dev files, validated + scored like the leaderboard
 #   3. training throughput benchmarks

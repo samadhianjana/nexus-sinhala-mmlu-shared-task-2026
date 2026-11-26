@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below, and cite the SinhalaMMLU paper listed under references."
+title: "Nexus at Sinhala MMLU 2026: Greedy Thinking-Mode Prompting of a Text-Only Gemma 4 E4B"
+type: software
+version: 1.0.0
+date-released: 2026-11-26
+license: Apache-2.0
+repository-code: "https://github.com/samadhianjana/sinhala-mmlu-shared-task"
+url: "https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus"
+authors:
+  - family-names: Talagala
+    given-names: "S.A."
+    affiliation: "Department of Computer Science and Engineering, University of Moratuwa"
+  - family-names: Hussaindeen
+    given-names: Anas
+    affiliation: "Department of Computer Science and Engineering, University of Moratuwa"
+  - family-names: Imthiyas
+    given-names: Ifadha
+    affiliation: "Department of Computer Science and Engineering, University of Moratuwa"
+  - family-names: Muthumala
+    given-names: "V.D.W."
+    affiliation: "Department of Computer Science and Engineering, University of Moratuwa"
+keywords:
+  - Sinhala
+  - MMLU
+  - low-resource NLP
+  - Gemma
+  - shared task
+references:
+  - type: conference-paper
+    title: "SinhalaMMLU: A Comprehensive Benchmark for Evaluating Multitask Language Understanding in Sinhala"
+    authors:
+      - family-names: Pramodya
+        given-names: Ashmari
+      - family-names: Nelki
+        given-names: Nirasha
+      - family-names: Shalinda
+        given-names: Heshan
+      - family-names: Liyanage
+        given-names: Chamila
+      - family-names: Sakai
+        given-names: Yusuke
+      - family-names: Pushpananda
+        given-names: Randil
+      - family-names: Weerasinghe
+        given-names: Ruvan
+      - family-names: Kamigaito
+        given-names: Hidetaka
+      - family-names: Watanabe
+        given-names: Taro
+    collection-title: "Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing"
+    year: 2025
+    start: 32931
+    end: 32949
+    url: "https://aclanthology.org/2025.emnlp-main.1673/"
