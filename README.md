@@ -1,7 +1,9 @@
-# SinhalaMMLU shared task (≤ 8B)
+# Nexus at Sinhala MMLU 2026: greedy thinking-mode prompting of a text-only Gemma 4 E4B
 
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97-team--nexus-yellow)](https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus)
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
+  <a href="https://huggingface.co/SinhalaMMLU-SharedTask/team-nexus"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97-team--nexus-yellow"></a>
+</p>
 
 **Code and experiments behind Team Nexus's 3rd-place entry in the ICTer 2026 SinhalaMMLU Shared Task.**
 
